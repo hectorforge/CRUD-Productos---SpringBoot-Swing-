@@ -6,6 +6,11 @@ import java.awt.event.ActionEvent;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+
 import java.awt.GridLayout;
 
 import com.example.demo.model.Product;
@@ -14,6 +19,11 @@ import com.example.demo.service.ProductService;
 public class HomeFrm extends JFrame {
 
     private final ProductService productService;
+    private int currentPage = 0;
+    private int pageSize = 10;
+    
+    long totalItems;
+    int totalPages;
 
     private static final long serialVersionUID = 1L;
     private JPanel contentPane;
@@ -56,11 +66,15 @@ public class HomeFrm extends JFrame {
         JButton btnEdit = new JButton("Editar");
         JButton btnDelete = new JButton("Eliminar");
         JButton btnRefresh = new JButton("Actualizar lista");
+        JButton btnPrev = new JButton("Anterior");
+        JButton btnNext = new JButton("Siguiente");
 
         panelButtons.add(btnAdd);
         panelButtons.add(btnEdit);
         panelButtons.add(btnDelete);
         panelButtons.add(btnRefresh);
+        panelButtons.add(btnPrev);
+        panelButtons.add(btnNext);
 
         contentPane.add(panelButtons, BorderLayout.SOUTH);
 
@@ -68,13 +82,30 @@ public class HomeFrm extends JFrame {
         btnEdit.addActionListener(this::onEdit);
         btnDelete.addActionListener(this::onDelete);
         btnRefresh.addActionListener(e -> cargarDatos());
+        
+        btnPrev.addActionListener(e -> setPage(currentPage - 1));
+        btnNext.addActionListener(e -> setPage(currentPage + 1));
+
 
         cargarDatos();
     }
 
+    private void setPage(int page) {
+        currentPage = Math.max(0, Math.min(page, totalPages - 1));
+        cargarDatos();
+    }
+    
     private void cargarDatos() {
         model.setRowCount(0);
-        for (Product p : productService.getAll()) {
+        
+        Page<Product> page = productService.getAll(
+            PageRequest.of(currentPage, pageSize, Sort.by("id").ascending())
+        );
+        
+        totalPages= page.getTotalPages();
+        totalItems = page.getTotalElements();
+
+        for (Product p : page.getContent()) {
             model.addRow(new Object[]{
                     p.getId(),
                     p.getName(),
@@ -84,6 +115,9 @@ public class HomeFrm extends JFrame {
                     p.isActivo()
             });
         }
+        
+        setTitle("CRUD Productos - Página " + (page.getNumber() + 1) 
+                 + " de " + page.getTotalPages());
     }
 
     private void onAdd(ActionEvent e) {
